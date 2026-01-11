@@ -1,7 +1,12 @@
 from flask import Flask
+import urls
+def create_app():
+    app = Flask(__name__)
+    
+    app.register_blueprint(urls.main)
+    
+    return app
 
-app = Flask(__name__)
-
-@app.route("/")
-def hello_world():
-    return "<p>Backend Starter</p>"
+if __name__ == '__main__':
+    app = create_app()
+    app.run(debug=True)
