@@ -10,8 +10,8 @@
 
 ## CD into frontend/
 
-### run npm install 
-### run npm run dev
+### run yarn install 
+### yarn dev
 
 #### backend runs at 127.0.0.1:5000
 #### frontend runs at localhost:5173
