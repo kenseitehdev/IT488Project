@@ -1,5 +1,5 @@
 
-import '../src/Vistera/VistraJS.js'
+import '../../src/Vistera/VistraJS.js'
 let counter = $.component.define({
 	name: "counter-box",
 	props: [],
