@@ -5,7 +5,7 @@
 
 ### run pipenv install
 ### run pipenv shell
-### run pipenv install Pipfile
+### run pipenv install 
 ### run python main.py  
 
 ## CD into frontend/
