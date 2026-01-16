@@ -1,6 +1,6 @@
 
 import '../../src/Vistera/VistraJS.js'
-
+import store from '../store.js'
 let nav = $.component.define({
 	name: "nav-bar",
 	props: [],
@@ -14,19 +14,19 @@ let nav = $.component.define({
       <button class="rounded-md bg-slate-800 py-2 px-4 border border-transparent text-center text-sm text-white transition-all shadow-md hover:shadow-lg focus:bg-slate-700 focus:shadow-none active:bg-slate-700 hover:bg-slate-700 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none" type="button">
         Search
       </button>
-    <button class="rounded-lg bg-black text-white">User</button></div>
+    <button id="username" class="rounded-lg bg-black text-white">User</button></div>
     
     </div>
-    <button class="relative ml-auto h-6 max-h-[40px] w-6 max-w-[40px] select-none rounded-lg text-center align-middle text-xs font-medium uppercase text-inherit transition-all hover:bg-transparent focus:bg-transparent active:bg-transparent disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none lg:hidden" type="button">
-      <span class="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path>
-        </svg>
-      </span>
-    </button>
   </div>
 </nav>	`,
 	onMount() {
+        
+        let user=store.state.user;
+       let username  = user ? user != null : "Guest";
+        $.selector("#username").text(username);
+        if (username=="Guest"){
+            alert("Auth Modal");
+        }
 }
 });
 export default nav;
