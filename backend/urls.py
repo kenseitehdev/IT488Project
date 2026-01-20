@@ -1,7 +1,13 @@
 from flask import Blueprint
 import views
 
-main = Blueprint('main', __name__)
+main = Blueprint("main", __name__)
 
-# Define URL patterns
-main.add_url_rule('/', view_func=views.home)
+main.add_url_rule("/", view_func=views.home, methods=["GET"])
+
+main.add_url_rule("/api/health", view_func=views.health, methods=["GET"])
+main.add_url_rule("/api/items", view_func=views.list_items, methods=["GET"])
+main.add_url_rule("/api/items", view_func=views.create_item, methods=["POST"])
+main.add_url_rule("/api/items/<int:item_id>", view_func=views.get_item, methods=["GET"])
+main.add_url_rule("/api/items/<int:item_id>", view_func=views.update_item, methods=["PUT"])
+main.add_url_rule("/api/items/<int:item_id>", view_func=views.delete_item, methods=["DELETE"])
