@@ -5,7 +5,7 @@ let nav = $.component.define({
 	name: "nav-bar",
 	props: [],
 	template: `
-      <nav class="block w-full  py-2 bg-white shadow-md rounded-mdmt-10 text-black mb-8">
+     <div> <nav class="block w-full  py-2 bg-white shadow-md rounded-mdmt-10 text-black mb-8">
   <div class="container-fluid mx-auto flex flex-wrap items-center justify-between px-12 ">
     <a href="#" class="block cursor-pointer py-1.5 text-4xl text-black font-bold">
       Homestack
@@ -18,7 +18,7 @@ let nav = $.component.define({
     
     </div>
   </div>
-</nav>	`,
+</nav>	<div id="auth"></div></div>`,
 	onMount() {
         
         let user=store.state.user;
