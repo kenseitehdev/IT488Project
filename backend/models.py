@@ -1,44 +1,126 @@
-"""SQLAlchemy ORM models for HomeStack."""
-
-from __future__ import annotations
-
+from typing import List, Optional
 from datetime import datetime
-from typing import Any, Dict, Optional
 
-from sqlalchemy import DateTime, Integer, String, Text
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import String, Boolean, ForeignKey
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
     pass
 
 
-class Item(Base):
-    """Represents a physical media item (book, DVD, vinyl, etc.)."""
+class User(Base):
+    __tablename__ = "users"
 
-    __tablename__ = "items"
+    user_id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
-    media_type: Mapped[str] = mapped_column(String(50), nullable=False)  # book, dvd, etc.
-    creator: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)  # author/director/artist
-    year: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
-    tags: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)  # comma-separated
-    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    roles: Mapped[List["UserRole"]] = relationship(back_populates="user")
+    items: Mapped[List["Item"]] = relationship(back_populates="user")
+    sessions: Mapped[List["Session"]] = relationship(back_populates="user")
+
+
+class Role(Base):
+    __tablename__ = "roles"
+
+    role_id: Mapped[int] = mapped_column(primary_key=True)
+    role_name: Mapped[str] = mapped_column(String(100), unique=True)
+
+    users: Mapped[List["UserRole"]] = relationship(back_populates="role")
+    permissions: Mapped[List["RolePermission"]] = relationship(back_populates="role")
+
+
+class UserRole(Base):
+    __tablename__ = "user_roles"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"), primary_key=True)
+    role_id: Mapped[int] = mapped_column(ForeignKey("roles.role_id"), primary_key=True)
+
+    user: Mapped["User"] = relationship(back_populates="roles")
+    role: Mapped["Role"] = relationship(back_populates="users")
+
+
+class Permission(Base):
+    __tablename__ = "permissions"
+
+    permission_id: Mapped[int] = mapped_column(primary_key=True)
+    permission_name: Mapped[str] = mapped_column(String(100), unique=True)
+
+    roles: Mapped[List["RolePermission"]] = relationship(back_populates="permission")
+
+
+class RolePermission(Base):
+    __tablename__ = "role_permissions"
+
+    role_id: Mapped[int] = mapped_column(ForeignKey("roles.role_id"), primary_key=True)
+    permission_id: Mapped[int] = mapped_column(
+        ForeignKey("permissions.permission_id"), primary_key=True
     )
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "id": self.id,
-            "title": self.title,
-            "media_type": self.media_type,
-            "creator": self.creator,
-            "year": self.year,
-            "tags": self.tags,
-            "notes": self.notes,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-        }
+    role: Mapped["Role"] = relationship(back_populates="permissions")
+    permission: Mapped["Permission"] = relationship(back_populates="roles")
+
+
+class ItemType(Base):
+    __tablename__ = "item_types"
+
+    item_type_id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True)
+
+    inventory_items: Mapped[List["Inventory"]] = relationship(back_populates="item_type")
+
+
+class Creator(Base):
+    __tablename__ = "creators"
+
+    creator_id: Mapped[int] = mapped_column(primary_key=True)
+    first_name: Mapped[str] = mapped_column(String(100))
+    last_name: Mapped[str] = mapped_column(String(100))
+
+    inventory_items: Mapped[List["Inventory"]] = relationship(back_populates="creator")
+
+
+class Inventory(Base):
+    __tablename__ = "inventory"
+
+    inventory_id: Mapped[int] = mapped_column(primary_key=True)
+    item_type_id: Mapped[int] = mapped_column(ForeignKey("item_types.item_type_id"))
+    creator_id: Mapped[int] = mapped_column(ForeignKey("creators.creator_id"))
+
+    title: Mapped[str] = mapped_column(String(255))
+    year: Mapped[Optional[int]]
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+
+    item_type: Mapped["ItemType"] = relationship(back_populates="inventory_items")
+    creator: Mapped["Creator"] = relationship(back_populates="inventory_items")
+    items: Mapped[List["Item"]] = relationship(back_populates="inventory")
+
+
+class Item(Base):
+    __tablename__ = "items"
+
+    item_id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
+    inventory_id: Mapped[int] = mapped_column(ForeignKey("inventory.inventory_id"))
+
+    notes: Mapped[Optional[str]]
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="items")
+    inventory: Mapped["Inventory"] = relationship(back_populates="items")
+
+
+class Session(Base):
+    __tablename__ = "sessions"
+
+    session_id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
+
+    session_start: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    last_seen: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    is_online: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    user: Mapped["User"] = relationship(back_populates="sessions")
