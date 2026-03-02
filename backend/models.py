@@ -102,8 +102,8 @@ class Inventory(Base):
 class Item(Base):
     __tablename__ = "items"
 
-    item_id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
+    id: Mapped[int] = mapped_column(primary_key=True)
+    creator: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
     inventory_id: Mapped[int] = mapped_column(ForeignKey("inventory.inventory_id"))
 
     notes: Mapped[Optional[str]]
