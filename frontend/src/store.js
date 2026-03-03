@@ -6,7 +6,7 @@ let store = $.store.create({
     isLoading: false,
     error: null
   },
-  
+
   actions: {
     setUser(state, userData) {
       state.user = userData;
@@ -18,7 +18,7 @@ let store = $.store.create({
       state.error = error;
     }
   },
-  
+
   getters: {
     isLoggedIn(state) {
       return state.user !== null;
