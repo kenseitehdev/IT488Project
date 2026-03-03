@@ -8,9 +8,18 @@ from models import Base
 def create_app() -> Flask:
     app = Flask(__name__)
 
+    # Create database tables
     Base.metadata.create_all(bind=engine)
+
+    # Register blueprints
     app.register_blueprint(urls.main)
 
+    # Health check endpoint
+    @app.route("/api/health")
+    def health():
+        return {"status": "ok"}
+
+    # CORS headers
     @app.after_request
     def add_cors_headers(response):
         response.headers["Access-Control-Allow-Origin"] = "*"
@@ -18,6 +27,7 @@ def create_app() -> Flask:
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
         return response
 
+    # Error handlers
     @app.errorhandler(404)
     def not_found(_err):
         return jsonify({"error": "Not found"}), 404
