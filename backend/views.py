@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from flask import jsonify, request
+from flask import jsonify, request, g 
 from sqlalchemy import select
 
 from db import get_session
 from models import Item
 
+from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import select
+from auth import generate_token, auth_required
+from models import User
 
 def home():
     return "HomeStack API is running"
@@ -113,3 +117,71 @@ def delete_item(item_id: int):
             return jsonify({"error": "Item not found"}), 404
         session.delete(item)
         return jsonify({"deleted": True, "id": item_id})
+
+
+def register():
+    payload = request.get_json(silent=True) or {}
+
+    email = str(payload.get("email", "")).strip().lower()
+    password = str(payload.get("password", "")).strip()
+
+    if not email:
+        return jsonify({"error": "email is required"}), 400
+    if not password:
+        return jsonify({"error": "password is required"}), 400
+    if len(password) < 6:
+        return jsonify({"error": "password must be at least 6 characters"}), 400
+
+    with get_session() as session:
+        existing_user = session.execute(
+            select(User).where(User.email == email)
+        ).scalar_one_or_none()
+
+        if existing_user:
+            return jsonify({"error": "A user with that email already exists"}), 409
+
+        user = User(
+            email=email,
+            password_hash=generate_password_hash(password),
+            is_verified=True
+        )
+
+        session.add(user)
+        session.flush()
+
+        token = generate_token(user)
+
+        return jsonify({
+            "message": "User registered successfully",
+            "token": token
+        }), 201
+
+
+def login():
+    payload = request.get_json(silent=True) or {}
+
+    email = str(payload.get("email", "")).strip().lower()
+    password = str(payload.get("password", "")).strip()
+
+    if not email or not password:
+        return jsonify({"error": "email and password are required"}), 400
+
+    with get_session() as session:
+        user = session.execute(
+            select(User).where(User.email == email)
+        ).scalar_one_or_none()
+
+        if not user or not check_password_hash(user.password_hash, password):
+            return jsonify({"error": "Invalid email or password"}), 401
+
+        token = generate_token(user)
+
+        return jsonify({
+            "message": "Login successful",
+            "token": token
+        })
+
+
+@auth_required
+def me():
+    return jsonify({"user": g.current_user})

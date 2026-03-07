@@ -11,3 +11,7 @@ main.add_url_rule("/api/items", view_func=views.create_item, methods=["POST"])
 main.add_url_rule("/api/items/<int:item_id>", view_func=views.get_item, methods=["GET"])
 main.add_url_rule("/api/items/<int:item_id>", view_func=views.update_item, methods=["PUT"])
 main.add_url_rule("/api/items/<int:item_id>", view_func=views.delete_item, methods=["DELETE"])
+
+main.add_url_rule("/api/auth/register", view_func=views.register, methods=["POST"])
+main.add_url_rule("/api/auth/login", view_func=views.login, methods=["POST"])
+main.add_url_rule("/api/auth/me", view_func=views.me, methods=["GET"])
