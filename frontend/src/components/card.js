@@ -4,7 +4,7 @@ import book from '../assets/book.svg'
 import game from '../assets/game.svg'
 import movie from '../assets/movie.svg'
 import vinyl from '../assets/vinyl.svg'
-
+import update from './updateModal.js'
 function getAssetByType(type) {
 	const t = String(type || '').trim().toLowerCase();
 
@@ -21,7 +21,7 @@ let card = $.component.define({
 	name: "item-card",
 	props: ['item_id', 'title', 'creator', 'tags', 'media_type', 'year', 'notes'],
 	template: `
-<div class="item-card-wrapper group relative bg-white rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 w-full max-w-sm">
+<div class="item-card-wrapper group relative bg-white rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 w-full max-w-sm cursor-pointer">
   <div class="relative h-64 overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100">
     <img class="item-image w-full h-full object-contain p-8 group-hover:scale-105 transition-transform duration-300" src="${book}" alt="Item cover">
   </div>
@@ -54,8 +54,8 @@ let card = $.component.define({
     </div>
 
     <div class="flex justify-center gap-2 mt-4">
-      <button class="edit-btn bg-blue-600 text-white px-3 py-1 rounded">Edit</button>
-      <button class="delete-btn bg-red-600 text-white px-3 py-1 rounded">Delete</button>
+      <button class="edit-btn bg-blue-600 text-white px-3 py-1 rounded" type="button">Edit</button>
+      <button class="delete-btn bg-red-600 text-white px-3 py-1 rounded" type="button">Delete</button>
     </div>
   </div>
 </div>
@@ -70,7 +70,10 @@ let card = $.component.define({
 		const mediaType = root.querySelector(".item-media-type");
 		const year = root.querySelector(".item-year");
 		const notes = root.querySelector(".item-notes");
+		const editBtn = root.querySelector(".edit-btn");
+		const deleteBtn = root.querySelector(".delete-btn");
 
+		const itemIdValue = this.props.item_id?.value || '';
 		const mediaTypeValue = this.props.media_type?.value || '';
 		const titleValue = this.props.title?.value || 'Untitled';
 		const creatorValue = this.props.creator?.value || 'Unknown Creator';
@@ -89,6 +92,85 @@ let card = $.component.define({
 		if (mediaType) mediaType.textContent = mediaTypeValue || 'Unknown';
 		if (year) year.textContent = yearValue;
 		if (notes) notes.textContent = notesValue;
+
+		root.addEventListener("click", () => {
+			const modal = document.getElementById("readModal");
+			if (!modal) {
+				console.warn("readModal not found");
+				return;
+			}
+
+			const readTitle = document.getElementById("readTitle");
+			const readMediaType = document.getElementById("readMediaType");
+			const readCreator = document.getElementById("readCreator");
+			const readYear = document.getElementById("readYear");
+			const readTags = document.getElementById("readTags");
+			const readNotes = document.getElementById("readNotes");
+
+			if (readTitle) readTitle.textContent = titleValue;
+			if (readMediaType) readMediaType.textContent = mediaTypeValue || 'Unknown';
+			if (readCreator) readCreator.textContent = creatorValue;
+			if (readYear) readYear.textContent = yearValue;
+			if (readTags) readTags.textContent = tagsValue;
+			if (readNotes) readNotes.textContent = notesValue;
+
+			modal.classList.remove("hidden");
+		});
+
+if (editBtn) {
+	editBtn.addEventListener("click", (event) => {
+		event.stopPropagation();
+
+		const modal = document.getElementById("updateModal");
+		if (!modal) {
+			console.warn("updateModal not found");
+			return;
+		}
+
+		document.getElementById("updateItemId").value = itemIdValue;
+		document.getElementById("updateTitle").value = titleValue;
+		document.getElementById("updateMediaType").value = mediaTypeValue;
+		document.getElementById("updateCreator").value = creatorValue;
+		document.getElementById("updateYear").value = yearValue;
+		document.getElementById("updateTags").value = tagsValue;
+		document.getElementById("updateNotes").value = notesValue;
+
+		modal.classList.remove("hidden");
+	});
+}
+		if (deleteBtn) {
+			deleteBtn.addEventListener("click", async (event) => {
+				event.stopPropagation();
+
+				const confirmed = window.confirm(`Delete "${titleValue}"?`);
+				if (!confirmed) return;
+
+				const token = localStorage.getItem("token");
+
+				try {
+					const res = await fetch(`http://127.0.0.1:5000/api/items/${itemIdValue}`, {
+						method: "DELETE",
+						headers: {
+							"Content-Type": "application/json",
+							...(token ? { Authorization: `Bearer ${token}` } : {})
+						}
+					});
+
+					const data = await res.json();
+					console.log("delete response:", data);
+
+					if (!res.ok) {
+						alert(data.error || "Failed to delete item");
+						return;
+					}
+
+					window.location.reload();
+				} catch (err) {
+					console.error("delete item error:", err);
+					alert("Delete item request failed");
+				}
+			});
+		}
 	}
 });
 

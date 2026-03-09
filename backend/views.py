@@ -41,6 +41,35 @@ def _parse_item_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     return data
 
 
+def serialize_user(user: User) -> dict:
+    return {
+        "user_id": user.user_id,
+        "email": user.email,
+        "is_verified": user.is_verified,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+    }
+
+
+def serialize_item(item: Item) -> dict:
+    inv = item.inventory
+    item_type = inv.item_type if inv else None
+    creator_obj = inv.creator if inv else None
+
+    creator_name = ""
+    if creator_obj:
+        creator_name = f"{creator_obj.first_name} {creator_obj.last_name}".strip()
+
+    return {
+        "id": item.id,
+        "title": inv.title if inv else "",
+        "media_type": item_type.name if item_type else "",
+        "creator": creator_name,
+        "year": inv.year if inv else None,
+        "notes": item.notes or "",
+        "tags": ""
+    }
+
+
 # -----------------------------
 # Users
 # -----------------------------
@@ -74,7 +103,7 @@ def create_user():
 
         session.add(user)
         session.flush()
-        return jsonify(user.to_dict()), 201
+        return jsonify(serialize_user(user)), 201
 
 
 def get_user(user_id: int):
@@ -83,47 +112,34 @@ def get_user(user_id: int):
         user = session.get(User, user_id)
         if not user:
             return jsonify({"error": "User not found"}), 404
-        return jsonify(user.to_dict())
+        return jsonify(serialize_user(user)), 200
 
 
 def list_users():
     """GET /api/users - return all users."""
     with get_session() as session:
         users = session.execute(select(User)).scalars().all()
-        return jsonify([u.to_dict() for u in users])
+        return jsonify([serialize_user(u) for u in users]), 200
 
 
 # -----------------------------
 # Items
 # -----------------------------
+@auth_required
 def list_items():
-    """GET /api/items - return all items."""
+    """GET /api/items - return items for the current user only."""
+    current_user = getattr(g, "current_user", None)
+    if not current_user:
+        return jsonify({"error": "Unauthorized"}), 401
+
     with get_session() as session:
         items = session.execute(
-            select(Item).order_by(Item.created_at.desc())
+            select(Item)
+            .where(Item.creator == current_user["user_id"])
+            .order_by(Item.created_at.desc())
         ).scalars().all()
 
-        result = []
-        for item in items:
-            inv = item.inventory
-            item_type = inv.item_type if inv else None
-            creator_obj = inv.creator if inv else None
-
-            creator_name = ""
-            if creator_obj:
-                creator_name = f"{creator_obj.first_name} {creator_obj.last_name}".strip()
-
-            result.append({
-                "id": item.id,
-                "title": inv.title if inv else "",
-                "media_type": item_type.name if item_type else "",
-                "creator": creator_name,
-                "year": inv.year if inv else None,
-                "notes": item.notes or "",
-                "tags": ""
-            })
-
-        return jsonify(result), 200
+        return jsonify([serialize_item(i) for i in items]), 200
 
 @auth_required
 def create_item():
@@ -135,7 +151,6 @@ def create_item():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-    # auth_required should have set this
     current_user = getattr(g, "current_user", None)
     if not current_user:
         return jsonify({"error": "Unauthorized"}), 401
@@ -201,14 +216,8 @@ def create_item():
         session.add(item)
         session.flush()
 
-        return jsonify({
-            "id": item.id,
-            "title": inventory.title,
-            "media_type": item_type.name,
-            "creator": f"{creator_obj.first_name} {creator_obj.last_name}".strip(),
-            "year": inventory.year,
-            "notes": item.notes or "",
-        }), 201
+        return jsonify(serialize_item(item)), 201
+
 
 def get_item(item_id: int):
     """GET /api/items/<id> - fetch one item."""
@@ -216,9 +225,10 @@ def get_item(item_id: int):
         item = session.get(Item, item_id)
         if not item:
             return jsonify({"error": "Item not found"}), 404
-        return jsonify(item.to_dict())
+        return jsonify(serialize_item(item)), 200
 
 
+@auth_required
 def update_item(item_id: int):
     """PUT /api/items/<id> - update an existing item."""
     payload = request.get_json(silent=True) or {}
@@ -228,16 +238,13 @@ def update_item(item_id: int):
 
     if "title" in updates and (updates["title"] is None or not str(updates["title"]).strip()):
         return jsonify({"error": "title cannot be empty"}), 400
+
     if "media_type" in updates and (
         updates["media_type"] is None or not str(updates["media_type"]).strip()
     ):
         return jsonify({"error": "media_type cannot be empty"}), 400
 
-    if "title" in updates:
-        updates["title"] = str(updates["title"]).strip()
-    if "media_type" in updates:
-        updates["media_type"] = str(updates["media_type"]).strip().lower()
-    for k in ["creator", "year", "tags", "notes"]:
+    for k in ["title", "media_type", "creator", "year", "tags", "notes"]:
         if k in updates and updates[k] is not None:
             updates[k] = str(updates[k]).strip()
 
@@ -246,14 +253,69 @@ def update_item(item_id: int):
         if not item:
             return jsonify({"error": "Item not found"}), 404
 
-        for k, v in updates.items():
-            setattr(item, k, v)
+        inventory = item.inventory
+        if not inventory:
+            return jsonify({"error": "Inventory record not found"}), 500
 
+        # Update title
+        if "title" in updates:
+            inventory.title = updates["title"]
+
+        # Update year
+        if "year" in updates:
+            inventory.year = int(updates["year"]) if updates["year"].isdigit() else None
+
+        # Update notes (belongs on Item)
+        if "notes" in updates:
+            item.notes = updates["notes"] or None
+
+        # Update media type
+        if "media_type" in updates:
+            media_type_name = updates["media_type"].lower()
+
+            item_type = session.execute(
+                select(ItemType).where(ItemType.name == media_type_name)
+            ).scalar_one_or_none()
+
+            if not item_type:
+                item_type = ItemType(name=media_type_name)
+                session.add(item_type)
+                session.flush()
+
+            inventory.item_type_id = item_type.item_type_id
+
+        # Update creator
+        if "creator" in updates:
+            creator_name = updates["creator"]
+
+            if creator_name:
+                if " " in creator_name:
+                    first_name, last_name = creator_name.split(" ", 1)
+                else:
+                    first_name, last_name = creator_name, ""
+
+                creator_obj = session.execute(
+                    select(Creator).where(
+                        Creator.first_name == first_name,
+                        Creator.last_name == last_name
+                    )
+                ).scalar_one_or_none()
+
+                if not creator_obj:
+                    creator_obj = Creator(first_name=first_name, last_name=last_name)
+                    session.add(creator_obj)
+                    session.flush()
+
+                inventory.creator_id = creator_obj.creator_id
+
+        session.add(inventory)
         session.add(item)
         session.flush()
-        return jsonify(item.to_dict())
+
+        return jsonify(serialize_item(item)), 200
 
 
+@auth_required
 def delete_item(item_id: int):
     """DELETE /api/items/<id> - delete an item."""
     with get_session() as session:
@@ -261,7 +323,7 @@ def delete_item(item_id: int):
         if not item:
             return jsonify({"error": "Item not found"}), 404
         session.delete(item)
-        return jsonify({"deleted": True, "id": item_id})
+        return jsonify({"deleted": True, "id": item_id}), 200
 
 
 # -----------------------------
@@ -301,7 +363,8 @@ def register():
 
         return jsonify({
             "message": "User registered successfully",
-            "token": token
+            "token": token,
+            "user": serialize_user(user)
         }), 201
 
 
@@ -325,14 +388,11 @@ def login():
         token = generate_token(user)
 
         return jsonify({
-    "message": "Login successful",
-    "token": token,
-    "user": {
-        "user_id": user.user_id,
-        "email": user.email,
-        "is_verified": user.is_verified,
-    }
-}), 200
+            "message": "Login successful",
+            "token": token,
+            "user": serialize_user(user)
+        }), 200
+
 
 def logout():
     """

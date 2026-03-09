@@ -13,8 +13,8 @@ let nav = $.component.define({
       </a>
 
       <div class="inline-flex">
-        <input class="border-2 w-lg border-black border-solid rounded-lg my-2" type="text" />
-        <button class="rounded-md bg-slate-800 py-2 px-4 border border-transparent text-center text-sm text-white transition-all shadow-md hover:shadow-lg focus:bg-slate-700 focus:shadow-none active:bg-slate-700 hover:bg-slate-700 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none" type="button">
+        <input id="searchInput" class="border-2 w-lg border-black border-solid rounded-lg my-2" type="text" />
+        <button id="searchBtn" class="rounded-md bg-slate-800 py-2 px-4 border border-transparent text-center text-sm text-white transition-all shadow-md hover:shadow-lg focus:bg-slate-700 focus:shadow-none active:bg-slate-700 hover:bg-slate-700 active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none" type="button">
           Search
         </button>
          </div><div class="inline-flex">
@@ -26,7 +26,29 @@ let nav = $.component.define({
 onMount() {
   const savedToken = localStorage.getItem("token");
   const savedUser = localStorage.getItem("user");
+const searchBtn = document.getElementById("searchBtn");
+const searchInput = document.getElementById("searchInput");
 
+console.log("NAV searchBtn:", searchBtn);
+console.log("NAV searchInput:", searchInput);
+if (searchBtn && searchInput) {
+  searchBtn.addEventListener("click", () => {
+    const query = searchInput.value.trim();
+    window.dispatchEvent(new CustomEvent("homestack-search", {
+      detail: { query }
+    }));
+  });
+
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const query = searchInput.value.trim();
+      window.dispatchEvent(new CustomEvent("homestack-search", {
+        detail: { query }
+      }));
+    }
+  });
+}
   if (!store.state.token && savedToken) {
     store.state.token = savedToken;
   }

@@ -4,24 +4,25 @@ import store from '../store.js'
 let update = $.component.define({
   name: "update-modal",
   props: [],
-  template: `
-<div id="createModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+  template: `<div id="updateModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
   <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-8 relative">
     
     <div class="flex items-center justify-between mb-6">
-      <h2 class="text-3xl font-bold text-gray-800">Create Item</h2>
-      <button id="closeCreateModal" type="button" class="text-gray-500 hover:text-black text-2xl font-bold leading-none">
+      <h2 class="text-3xl font-bold text-gray-800">Update Item</h2>
+      <button id="closeUpdateModal" type="button" class="text-gray-500 hover:text-black text-2xl font-bold leading-none">
         ×
       </button>
     </div>
 
-    <form id="createItemForm" class="space-y-5">
+    <form id="updateItemForm" class="space-y-5">
+      <input id="updateItemId" type="hidden" />
+
       <div>
-        <label for="createTitle" class="block text-sm font-semibold text-gray-700 mb-2">
+        <label for="updateTitle" class="block text-sm font-semibold text-gray-700 mb-2">
           Title
         </label>
         <input
-          id="createTitle"
+          id="updateTitle"
           type="text"
           placeholder="Enter item title"
           class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-black"
@@ -30,11 +31,11 @@ let update = $.component.define({
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label for="createMediaType" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="updateMediaType" class="block text-sm font-semibold text-gray-700 mb-2">
             Media Type
           </label>
           <select
-            id="createMediaType"
+            id="updateMediaType"
             class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-black"
           >
             <option value="">Select media type</option>
@@ -47,11 +48,11 @@ let update = $.component.define({
         </div>
 
         <div>
-          <label for="createYear" class="block text-sm font-semibold text-gray-700 mb-2">
+          <label for="updateYear" class="block text-sm font-semibold text-gray-700 mb-2">
             Year
           </label>
           <input
-            id="createYear"
+            id="updateYear"
             type="text"
             placeholder="e.g. 1999"
             class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-black"
@@ -60,11 +61,11 @@ let update = $.component.define({
       </div>
 
       <div>
-        <label for="createCreator" class="block text-sm font-semibold text-gray-700 mb-2">
+        <label for="updateCreator" class="block text-sm font-semibold text-gray-700 mb-2">
           Creator
         </label>
         <input
-          id="createCreator"
+          id="updateCreator"
           type="text"
           placeholder="Author, director, artist, etc."
           class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-black"
@@ -72,11 +73,11 @@ let update = $.component.define({
       </div>
 
       <div>
-        <label for="createTags" class="block text-sm font-semibold text-gray-700 mb-2">
+        <label for="updateTags" class="block text-sm font-semibold text-gray-700 mb-2">
           Tags
         </label>
         <input
-          id="createTags"
+          id="updateTags"
           type="text"
           placeholder="Comma-separated tags"
           class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-black"
@@ -84,11 +85,11 @@ let update = $.component.define({
       </div>
 
       <div>
-        <label for="createNotes" class="block text-sm font-semibold text-gray-700 mb-2">
+        <label for="updateNotes" class="block text-sm font-semibold text-gray-700 mb-2">
           Notes
         </label>
         <textarea
-          id="createNotes"
+          id="updateNotes"
           rows="4"
           placeholder="Optional notes"
           class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-black resize-none"
@@ -97,7 +98,7 @@ let update = $.component.define({
 
       <div class="flex justify-end gap-3 pt-4">
         <button
-          id="cancelCreateModal"
+          id="cancelUpdateModal"
           type="button"
           class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
         >
@@ -105,11 +106,11 @@ let update = $.component.define({
         </button>
 
         <button
-          id="submitCreateItem"
+          id="submitUpdateItem"
           type="submit"
           class="px-5 py-2.5 rounded-lg bg-black text-white hover:bg-gray-800 transition"
         >
-          Create
+          Update
         </button>
       </div>
     </form>
@@ -117,10 +118,10 @@ let update = $.component.define({
 </div>
   `,
   onMount() {
-    const modal = document.getElementById("createModal");
-    const closeBtn = document.getElementById("closeCreateModal");
-    const cancelBtn = document.getElementById("cancelCreateModal");
-    const form = document.getElementById("createItemForm");
+    const modal = document.getElementById("updateModal");
+    const closeBtn = document.getElementById("closeUpdateModal");
+    const cancelBtn = document.getElementById("cancelUpdateModal");
+    const form = document.getElementById("updateItemForm");
 
     const hideModal = () => {
       modal.classList.add("hidden");
@@ -133,19 +134,20 @@ let update = $.component.define({
       event.preventDefault();
 
       const token = store.state.token || localStorage.getItem("token");
+      const itemId = document.getElementById("updateItemId").value;
 
       const payload = {
-        title: document.getElementById("createTitle").value.trim(),
-        media_type: document.getElementById("createMediaType").value.trim(),
-        creator: document.getElementById("createCreator").value.trim(),
-        year: document.getElementById("createYear").value.trim(),
-        tags: document.getElementById("createTags").value.trim(),
-        notes: document.getElementById("createNotes").value.trim()
+        title: document.getElementById("updateTitle").value.trim(),
+        media_type: document.getElementById("updateMediaType").value.trim(),
+        creator: document.getElementById("updateCreator").value.trim(),
+        year: document.getElementById("updateYear").value.trim(),
+        tags: document.getElementById("updateTags").value.trim(),
+        notes: document.getElementById("updateNotes").value.trim()
       };
 
       try {
-        const res = await fetch("http://127.0.0.1:5000/api/items", {
-          method: "POST",
+        const res = await fetch(`http://127.0.0.1:5000/api/items/${itemId}`, {
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {})
@@ -154,19 +156,18 @@ let update = $.component.define({
         });
 
         const data = await res.json();
-        console.log("create item response:", data);
+        console.log("update item response:", data);
 
         if (!res.ok) {
-          alert(data.error || "Failed to create item");
+          alert(data.error || "Failed to update item");
           return;
         }
 
-        form.reset();
         hideModal();
         window.location.reload();
       } catch (err) {
-        console.error("create item error:", err);
-        alert("Create item request failed");
+        console.error("update item error:", err);
+        alert("Update item request failed");
       }
     });
   }
